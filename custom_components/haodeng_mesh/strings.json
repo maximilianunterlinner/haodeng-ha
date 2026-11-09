@@ -1,0 +1,74 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect Hao Deng account",
+        "description": "Your Hao Deng app login is used once to download the mesh credentials and the list of lights. The login itself is not stored; afterwards everything runs locally via Bluetooth.",
+        "data": {
+          "username": "Username (email)",
+          "password": "Password",
+          "region": "Server region"
+        }
+      },
+      "place": {
+        "title": "Select place",
+        "description": "Your account has several places. Each place is its own mesh network; add the others afterwards as separate entries.",
+        "data": {
+          "place": "Place"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Login rejected. Check username, password and server region.",
+      "cannot_connect": "Cannot reach the Hao Deng cloud.",
+      "no_places": "No place found in this account.",
+      "unknown": "Unexpected error."
+    },
+    "abort": {
+      "already_configured": "This place is already set up.",
+      "no_devices_found": "No lights found in this place.",
+      "cannot_connect": "Cannot reach the Hao Deng cloud.",
+      "place_not_found": "The place of this entry was not found in the account.",
+      "reconfigure_successful": "Credentials and light list updated."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Colour temperature",
+        "description": "If warm and cold white are swapped, enable inversion.",
+        "data": {
+          "min_kelvin": "Warmest white (K)",
+          "max_kelvin": "Coldest white (K)",
+          "invert_color_temp": "Invert colour temperature"
+        }
+      }
+    },
+    "error": {
+      "kelvin_range": "The warmest value must be lower than the coldest value."
+    }
+  },
+  "selector": {
+    "region": {
+      "options": {
+        "eu": "Europe",
+        "us": "USA",
+        "cn": "China",
+        "au": "Australia",
+        "jp": "Japan",
+        "tt": "Other (Avalon)"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "connected_via": { "name": "Connected via" }
+    },
+    "binary_sensor": {
+      "mesh_connected": { "name": "Mesh connection" }
+    },
+    "button": {
+      "reconnect": { "name": "Reconnect" }
+    }
+  }
+}

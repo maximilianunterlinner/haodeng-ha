@@ -1,0 +1,74 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Hao-Deng-Konto verbinden",
+        "description": "Dein Login aus der Hao-Deng-App wird einmalig genutzt, um die Mesh-Zugangsdaten und die Lampenliste herunterzuladen. Der Login selbst wird nicht gespeichert; danach läuft alles lokal über Bluetooth.",
+        "data": {
+          "username": "Benutzername (E-Mail)",
+          "password": "Passwort",
+          "region": "Server-Region"
+        }
+      },
+      "place": {
+        "title": "Ort auswählen",
+        "description": "Dein Konto hat mehrere Orte. Jeder Ort ist ein eigenes Mesh-Netz; weitere Orte fügst du danach als zusätzlichen Eintrag hinzu.",
+        "data": {
+          "place": "Ort"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Login abgelehnt. Prüfe Benutzername, Passwort und Server-Region.",
+      "cannot_connect": "Die Hao-Deng-Cloud ist nicht erreichbar.",
+      "no_places": "In diesem Konto wurde kein Ort gefunden.",
+      "unknown": "Unerwarteter Fehler."
+    },
+    "abort": {
+      "already_configured": "Dieser Ort ist bereits eingerichtet.",
+      "no_devices_found": "In diesem Ort wurden keine Lampen gefunden.",
+      "cannot_connect": "Die Hao-Deng-Cloud ist nicht erreichbar.",
+      "place_not_found": "Der Ort dieses Eintrags wurde im Konto nicht gefunden.",
+      "reconfigure_successful": "Zugangsdaten und Lampenliste aktualisiert."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Farbtemperatur",
+        "description": "Falls Warm- und Kaltweiß vertauscht sind, aktiviere die Umkehrung.",
+        "data": {
+          "min_kelvin": "Wärmstes Weiß (K)",
+          "max_kelvin": "Kältestes Weiß (K)",
+          "invert_color_temp": "Farbtemperatur umkehren"
+        }
+      }
+    },
+    "error": {
+      "kelvin_range": "Der wärmste Wert muss kleiner als der kälteste sein."
+    }
+  },
+  "selector": {
+    "region": {
+      "options": {
+        "eu": "Europa",
+        "us": "USA",
+        "cn": "China",
+        "au": "Australien",
+        "jp": "Japan",
+        "tt": "Andere (Avalon)"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "connected_via": { "name": "Verbunden über" }
+    },
+    "binary_sensor": {
+      "mesh_connected": { "name": "Mesh-Verbindung" }
+    },
+    "button": {
+      "reconnect": { "name": "Neu verbinden" }
+    }
+  }
+}

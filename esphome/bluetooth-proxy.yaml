@@ -1,0 +1,33 @@
+# ESPHome Bluetooth-Proxy für Hao Deng Mesh
+# Für einen beliebigen ESP32 (z. B. ESP32-DevKit, M5Stack Atom Lite, Olimex ESP32-POE).
+# Kein ESP32-C3/S2 ohne BLE, kein ESP8266.
+# In der Nähe einer der Lampen platzieren. Mehrere Proxys sind möglich.
+
+esphome:
+  name: bt-proxy-wohnzimmer
+  friendly_name: BT-Proxy Wohnzimmer
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf          # esp-idf ist für BLE deutlich stabiler als arduino
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+
+logger:
+
+esp32_ble_tracker:
+  scan_parameters:
+    active: true
+
+bluetooth_proxy:
+  active: true             # WICHTIG: erlaubt aktive Verbindungen (nötig für die Lampen)
