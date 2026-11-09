@@ -76,6 +76,7 @@ class CloudDevice:
     manufacturer: str | None
     firmware: str | None
     device_type: int | None
+    groups: list[int] = field(default_factory=list)
 
 
 def _checkcode(timestamp: str) -> str:
@@ -184,6 +185,11 @@ class HaoDengCloud:
                     manufacturer=item.get("vendor"),
                     firmware=item.get("firmwareRevision"),
                     device_type=item.get("deviceType"),
+                    groups=[
+                        int(item[f"group{i}ID"])
+                        for i in range(1, 9)
+                        if item.get(f"group{i}ID") not in (None, 0, "0")
+                    ],
                 )
             )
         return devices

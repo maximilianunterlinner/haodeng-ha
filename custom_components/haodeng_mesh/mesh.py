@@ -13,6 +13,7 @@ other lights and sends their status back as notifications. The manager
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 import logging
@@ -78,6 +79,35 @@ class _Connection:
     mac: str
     name: str
     session_key: bytes
+
+
+async def _async_esphome_subscribe(
+    client: BleakClientWithServiceCache, callback: Callable[[object, bytearray], None]
+) -> None:
+    """Register for notifications on an ESPHome proxy without writing a CCCD.
+
+    Uses the backend that bleak-esphome uses internally and registers the
+    subscription in its bookkeeping, so stop_notify/disconnect clean it up.
+    """
+    backend = getattr(client, "_backend", None)
+    api = getattr(backend, "_client", None)
+    address = getattr(backend, "_address_as_int", None)
+    cancels = getattr(backend, "_notify_cancels", None)
+    if api is None or address is None or not hasattr(api, "bluetooth_gatt_start_notify"):
+        raise BleakError("status characteristic has no CCCD and backend is not an ESPHome proxy")
+
+    characteristic = client.services.get_characteristic(commands.STATUS_CHAR_UUID)
+    if characteristic is None:
+        raise BleakError("status characteristic not found")
+    if cancels is not None and characteristic.handle in cancels:
+        return  # already subscribed
+
+    def _on_notify(_handle: int, data: bytes | bytearray) -> None:
+        callback(characteristic, bytearray(data))
+
+    cancel = await api.bluetooth_gatt_start_notify(address, characteristic.handle, _on_notify, 30.0)
+    if cancels is not None:
+        cancels[characteristic.handle] = cancel
 
 
 class HaoDengMesh:
@@ -326,7 +356,16 @@ class HaoDengMesh:
         packet = build_command(conn.session_key, conn.mac, commands.NOTIFY_ENABLE_DEST, 0x01, b"")
         await conn.client.write_gatt_char(commands.STATUS_CHAR_UUID, packet, True)
         await asyncio.sleep(_LOGIN_SETTLE)
-        await conn.client.start_notify(commands.STATUS_CHAR_UUID, self._on_notification)
+        try:
+            await conn.client.start_notify(commands.STATUS_CHAR_UUID, self._on_notification)
+        except BleakError as err:
+            if "client config descriptor" not in str(err):
+                raise
+            # Telink lights have no CCCD on the status characteristic; they enable
+            # notifications through the 0x01 write above. ESPHome proxies insist on
+            # writing a CCCD and roll back, so subscribe on the proxy directly.
+            _LOGGER.debug("No CCCD on status characteristic, using ESPHome proxy fallback")
+            await _async_esphome_subscribe(conn.client, self._on_notification)
 
     async def _async_disconnect(self) -> None:
         conn, self._conn = self._conn, None

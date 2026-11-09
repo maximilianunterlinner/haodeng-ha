@@ -53,11 +53,13 @@ from .const import (
     DEFAULT_MAX_KELVIN,
     DEFAULT_MIN_KELVIN,
     DEV_FIRMWARE,
+    DEV_GROUPS,
     DEV_MAC,
     DEV_MANUFACTURER,
     DEV_MESH_ID,
     DEV_MODEL,
     DEV_NAME,
+    DEV_TYPE,
     DOMAIN,
     OPT_INVERT_CCT,
     OPT_MAX_KELVIN,
@@ -98,6 +100,8 @@ def _device_entry(device: CloudDevice) -> dict[str, Any]:
         DEV_MODEL: device.model,
         DEV_MANUFACTURER: device.manufacturer,
         DEV_FIRMWARE: device.firmware,
+        DEV_TYPE: device.device_type,
+        DEV_GROUPS: device.groups,
     }
 
 

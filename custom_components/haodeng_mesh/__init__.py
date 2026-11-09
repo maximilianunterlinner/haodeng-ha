@@ -43,7 +43,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: HaoDengConfigEntry) -> b
     entry.runtime_data = mesh
 
     # Hub device that all lights hang off (via_device)
-    dr.async_get(hass).async_get_or_create(
+    dev_reg = dr.async_get(hass)
+    hub = dev_reg.async_get_or_create(
         config_entry_id=entry.entry_id,
         identifiers={(DOMAIN, entry.entry_id)},
         name=f"Hao Deng Mesh {entry.data.get(CONF_PLACE_NAME, '')}".strip(),
@@ -52,6 +53,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: HaoDengConfigEntry) -> b
     )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    # Attach the lights to the hub device ("connected via")
+    for device in dr.async_entries_for_config_entry(dev_reg, entry.entry_id):
+        if device.id != hub.id and device.via_device_id != hub.id:
+            dev_reg.async_update_device(device.id, via_device_id=hub.id)
+
     await mesh.async_start()
     return True
 

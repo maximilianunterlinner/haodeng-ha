@@ -22,6 +22,8 @@ DEV_NAME: Final = "name"
 DEV_MODEL: Final = "model"
 DEV_MANUFACTURER: Final = "manufacturer"
 DEV_FIRMWARE: Final = "firmware"
+DEV_TYPE: Final = "device_type"
+DEV_GROUPS: Final = "groups"
 
 # Options
 OPT_MIN_KELVIN: Final = "min_kelvin"

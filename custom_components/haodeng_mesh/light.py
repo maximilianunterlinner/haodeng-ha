@@ -97,7 +97,6 @@ class HaoDengLight(HaoDengEntity, LightEntity):
             manufacturer=device.get(DEV_MANUFACTURER) or "Zengge",
             model=(device.get(DEV_MODEL) or "").replace("_", " ") or None,
             sw_version=device.get(DEV_FIRMWARE),
-            via_device=(DOMAIN, entry_id),
         )
         self._last_status: LightStatus | None = None
         self._commanded_rgb: tuple[int, int, int] | None = None

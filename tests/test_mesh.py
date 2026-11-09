@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from bleak.exc import BleakError
 from homeassistant.core import HomeAssistant
@@ -142,3 +142,71 @@ async def test_decrypt_helper_consistency() -> None:
     key = os.urandom(16)
     payload = bytes(13)
     assert decrypt_packet(key, MAC, _device_notification(key, MAC, payload)) is not None
+
+
+class FakeEsphomeApi:
+    def __init__(self) -> None:
+        self.subscribed: list[tuple[int, int]] = []
+        self.on_notify = None
+
+    async def bluetooth_gatt_start_notify(self, address, handle, on_notify, _timeout):
+        self.subscribed.append((address, handle))
+        self.on_notify = on_notify
+        return (AsyncMock(), lambda: None)
+
+
+class FakeChar:
+    handle = 17
+    uuid = commands.STATUS_CHAR_UUID
+
+
+class FakeProxyLight(FakeLight):
+    """Like a Telink light behind an ESPHome proxy: start_notify fails on the missing CCCD."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._backend = type("B", (), {})()
+        self._backend._client = FakeEsphomeApi()
+        self._backend._address_as_int = 0xF81D78675D54
+        self._backend._notify_cancels = {}
+        self.services = type("S", (), {"get_characteristic": lambda _s, uuid: FakeChar()})()
+
+    async def start_notify(self, uuid: str, cb) -> None:
+        raise BleakError(
+            "esp32-bluetooth-proxy [7C:9E:BD:61:C9:A2]: Characteristic "
+            f"{uuid} does not have a characteristic client config descriptor."
+        )
+
+
+async def test_esphome_proxy_without_cccd(hass: HomeAssistant) -> None:
+    mesh, light = _mesh(hass), FakeProxyLight()
+    key = os.urandom(16)
+    mesh._conn = _Connection(client=light, mac=MAC, name="Spot", session_key=key)
+    await mesh._async_enable_notifications()
+
+    api = light._backend._client
+    assert api.subscribed == [(0xF81D78675D54, 17)]
+    assert 17 in light._backend._notify_cancels  # cleaned up by bleak-esphome on disconnect
+    # the Telink "enable notify" write happened first
+    assert light.writes[0][0] == commands.STATUS_CHAR_UUID
+
+    # a notification arriving through the proxy reaches the mesh manager
+    payload = bytes([commands.OPCODE_NOTIFICATION, 0, 0]) + bytes([3, 1, 42, 0x41, 10, 0, 0, 0, 0, 0])
+    api.on_notify(17, _device_notification(key, MAC, payload))
+    assert mesh.status[3].brightness == 42
+
+    # second call does not subscribe twice
+    await mesh._async_enable_notifications()
+    assert len(api.subscribed) == 1
+
+
+async def test_other_notify_errors_propagate(hass: HomeAssistant) -> None:
+    mesh, light = _mesh(hass), FakeLight()
+
+    async def boom(uuid, cb):
+        raise BleakError("something else")
+
+    light.start_notify = boom
+    mesh._conn = _Connection(client=light, mac=MAC, name="Spot", session_key=os.urandom(16))
+    with pytest.raises(BleakError):
+        await mesh._async_enable_notifications()
