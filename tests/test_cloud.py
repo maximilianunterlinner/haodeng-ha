@@ -110,7 +110,7 @@ async def test_device_groups_parsed(aioclient_mock: AiohttpClientMocker, hass) -
             "result": [
                 {
                     "meshAddress": 3,
-                    "macAddress": "F8:1D:78:00:00:03",
+                    "macAddress": "A4:C1:38:00:00:03",
                     "group1ID": 32771,
                     "group2ID": 0,
                     "group3ID": 32774,

@@ -167,7 +167,7 @@ class FakeProxyLight(FakeLight):
         super().__init__()
         self._backend = type("B", (), {})()
         self._backend._client = FakeEsphomeApi()
-        self._backend._address_as_int = 0xF81D78675D54
+        self._backend._address_as_int = 0xA4C138000003
         self._backend._notify_cancels = {}
         self.services = type("S", (), {"get_characteristic": lambda _s, uuid: FakeChar()})()
 
@@ -185,7 +185,7 @@ async def test_esphome_proxy_without_cccd(hass: HomeAssistant) -> None:
     await mesh._async_enable_notifications()
 
     api = light._backend._client
-    assert api.subscribed == [(0xF81D78675D54, 17)]
+    assert api.subscribed == [(0xA4C138000003, 17)]
     assert 17 in light._backend._notify_cancels  # cleaned up by bleak-esphome on disconnect
     # the Telink "enable notify" write happened first
     assert light.writes[0][0] == commands.STATUS_CHAR_UUID
