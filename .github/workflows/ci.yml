@@ -16,6 +16,7 @@ jobs:
           python-version: "3.13"
       - run: uv pip install --system pytest-homeassistant-custom-component pycryptodome ruff
       - run: ruff check .
+      - run: node --check custom_components/haodeng_mesh/frontend/haodeng-light-card.js
       - run: pytest -q
 
   hassfest:

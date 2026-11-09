@@ -67,6 +67,26 @@ Gruppen in der App geändert? → *Neu konfigurieren*.
 | `sensor.*_verbunden_uber` | Diagnose: über welche Lampe verbunden; Attribute `last_error`, `wifi_bridge_online` |
 | `button.*_neu_verbinden` | Diagnose: Verbindung neu aufbauen |
 
+## Dashboard-Karte „Hao Deng Licht“
+
+Die Integration bringt eine eigene Karte im Stil der Hao-Deng-App mit (wird automatisch geladen, keine Ressource nötig):
+Farbring (Winkel = Farbe, Abstand = Sättigung), innen Warm-/Kaltweiß, Schnellwahl-Farben, Helligkeitsregler und Ein/Aus.
+Funktioniert mit jeder Lampe oder Gruppe – auch mit Lampen anderer Integrationen.
+
+Dashboard bearbeiten → *Karte hinzufügen* → „Hao Deng Licht“, oder per YAML:
+
+```yaml
+type: custom:haodeng-light-card
+entity: light.kuche
+name: Küche            # optional
+presets:               # optional, max. 6
+  - color_temp_kelvin: 2700
+  - color_temp_kelvin: 6500
+  - rgb_color: [0, 0, 255]
+  - rgb_color: [255, 110, 30]
+    brightness_pct: 40
+```
+
 ## Bridge und App weiter nutzen?
 
 Ja, beides kann parallel weiterlaufen. Die WLAN-Bridge ist aber nicht mehr nötig und kann abgesteckt werden.
