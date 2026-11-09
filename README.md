@@ -29,6 +29,15 @@ Home Assistant ──(Bluetooth oder ESPHome-Proxy)──▶ eine Lampe ──(M
 
 > Hinweis: Ist das Repository privat, kann HACS es nur laden, wenn der bei HACS hinterlegte GitHub-Zugang Zugriff darauf hat. Sonst manuell installieren.
 
+### Docker-Installation mit Git (empfohlen für Updates)
+Einmalig einen Deploy Key (nur Lesezugriff auf dieses Repo) auf dem Host anlegen und das Repo klonen, danach genügt für jedes Update:
+
+```bash
+~/haodeng-ha/scripts/update-ha.sh
+```
+
+Das Skript holt die neueste Version, kopiert sie nach `custom_components/` und startet den Container neu. Pfade lassen sich über `HA_CONFIG`, `HA_STACK` und `HA_SERVICE` anpassen.
+
 ### Manuell
 Ordner `custom_components/haodeng_mesh` nach `/config/custom_components/haodeng_mesh` kopieren (z. B. per Samba- oder File-Editor-Add-on) und HA neu starten.
 
