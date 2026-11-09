@@ -14,6 +14,7 @@ CONF_PLACE_ID: Final = "place_id"
 CONF_PLACE_NAME: Final = "place_name"
 CONF_DEVICES: Final = "devices"
 CONF_REGION: Final = "region"
+CONF_GROUPS: Final = "groups"
 
 # Per device keys (stored in entry.data[CONF_DEVICES])
 DEV_MESH_ID: Final = "mesh_id"
@@ -24,6 +25,10 @@ DEV_MANUFACTURER: Final = "manufacturer"
 DEV_FIRMWARE: Final = "firmware"
 DEV_TYPE: Final = "device_type"
 DEV_GROUPS: Final = "groups"
+
+# Per group keys (stored in entry.data[CONF_GROUPS])
+GROUP_ID: Final = "group_id"
+GROUP_NAME: Final = "name"
 
 # Options
 OPT_MIN_KELVIN: Final = "min_kelvin"

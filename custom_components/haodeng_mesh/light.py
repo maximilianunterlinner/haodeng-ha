@@ -1,4 +1,4 @@
-"""Light platform."""
+"""Light platform: single lights and Hao Deng mesh groups."""
 
 from __future__ import annotations
 
@@ -19,16 +19,21 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from . import HaoDengConfigEntry
 from .const import (
     CONF_DEVICES,
+    CONF_GROUPS,
+    CONF_PLACE_ID,
     DEFAULT_INVERT_CCT,
     DEFAULT_MAX_KELVIN,
     DEFAULT_MIN_KELVIN,
     DEV_FIRMWARE,
+    DEV_GROUPS,
     DEV_MAC,
     DEV_MANUFACTURER,
     DEV_MESH_ID,
     DEV_MODEL,
     DEV_NAME,
     DOMAIN,
+    GROUP_ID,
+    GROUP_NAME,
     OPT_INVERT_CCT,
     OPT_MAX_KELVIN,
     OPT_MIN_KELVIN,
@@ -46,13 +51,21 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     mesh = entry.runtime_data
-    min_k = entry.options.get(OPT_MIN_KELVIN, DEFAULT_MIN_KELVIN)
-    max_k = entry.options.get(OPT_MAX_KELVIN, DEFAULT_MAX_KELVIN)
-    invert = entry.options.get(OPT_INVERT_CCT, DEFAULT_INVERT_CCT)
-    async_add_entities(
-        HaoDengLight(mesh, entry.entry_id, device, min_k, max_k, invert)
-        for device in entry.data[CONF_DEVICES]
+    kelvin = (
+        entry.options.get(OPT_MIN_KELVIN, DEFAULT_MIN_KELVIN),
+        entry.options.get(OPT_MAX_KELVIN, DEFAULT_MAX_KELVIN),
+        entry.options.get(OPT_INVERT_CCT, DEFAULT_INVERT_CCT),
     )
+    devices = entry.data[CONF_DEVICES]
+    entities: list[LightEntity] = [HaoDengLight(mesh, device, *kelvin) for device in devices]
+
+    for group in entry.data.get(CONF_GROUPS, []):
+        members = [d[DEV_MESH_ID] for d in devices if group[GROUP_ID] in d.get(DEV_GROUPS, [])]
+        if members:
+            entities.append(
+                HaoDengGroupLight(mesh, entry.entry_id, entry.data[CONF_PLACE_ID], group, members, *kelvin)
+            )
+    async_add_entities(entities)
 
 
 def _to_percent(ha_brightness: int) -> int:
@@ -68,40 +81,20 @@ def _hue_close(a: int, b: int) -> bool:
     return min(diff, 256 - diff) <= _HUE_TOLERANCE
 
 
-class HaoDengLight(HaoDengEntity, LightEntity):
-    """A single light in the mesh."""
+class _HaoDengLightBase(HaoDengEntity, LightEntity):
+    """Shared command handling. Subclasses decide the destination and the state."""
 
-    _attr_name = None  # use the device name
     _attr_supported_color_modes = {ColorMode.COLOR_TEMP, ColorMode.RGB}
 
     def __init__(
-        self,
-        mesh: HaoDengMesh,
-        entry_id: str,
-        device: dict[str, Any],
-        min_kelvin: int,
-        max_kelvin: int,
-        invert_cct: bool,
+        self, mesh: HaoDengMesh, dest: int, min_kelvin: int, max_kelvin: int, invert_cct: bool
     ) -> None:
         super().__init__(mesh)
-        self._mesh_id: int = device[DEV_MESH_ID]
-        mac = normalize_mac(device[DEV_MAC])
-        self._attr_unique_id = mac.replace(":", "").lower()
+        self._dest = dest
         self._attr_min_color_temp_kelvin = min_kelvin
         self._attr_max_color_temp_kelvin = max_kelvin
         self._invert_cct = invert_cct
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, self._attr_unique_id)},
-            connections={(CONNECTION_BLUETOOTH, mac)},
-            name=device[DEV_NAME],
-            manufacturer=device.get(DEV_MANUFACTURER) or "Zengge",
-            model=(device.get(DEV_MODEL) or "").replace("_", " ") or None,
-            sw_version=device.get(DEV_FIRMWARE),
-        )
-        self._last_status: LightStatus | None = None
         self._commanded_rgb: tuple[int, int, int] | None = None
-
-        # Start values until the first status arrives
         self._attr_is_on = None
         self._attr_brightness = None
         self._attr_color_mode = ColorMode.COLOR_TEMP
@@ -124,21 +117,8 @@ class HaoDengLight(HaoDengEntity, LightEntity):
             ratio = 1 - ratio
         return round(low + ratio * (high - low))
 
-    # ------------------------------------------------------------------ state
-
-    @property
-    def available(self) -> bool:
-        return self._mesh.is_available(self._mesh_id)
-
-    @callback
-    def _handle_mesh_update(self) -> None:
-        status = self._mesh.status.get(self._mesh_id)
-        if status is not None and status != self._last_status:
-            self._last_status = status
-            self._apply_status(status)
-        self.async_write_ha_state()
-
     def _apply_status(self, status: LightStatus) -> None:
+        """Take over on/brightness/colour from a (representative) light status."""
         self._attr_is_on = status.is_on
         if status.brightness > 0:
             self._attr_brightness = _to_ha(status.brightness)
@@ -157,7 +137,7 @@ class HaoDengLight(HaoDengEntity, LightEntity):
 
     async def _send(self, command: commands.Command) -> None:
         try:
-            await self._mesh.async_send(self._mesh_id, command)
+            await self._mesh.async_send(self._dest, command)
         except MeshError as err:
             raise HomeAssistantError(f"{self.name or 'Light'}: {err}") from err
 
@@ -193,4 +173,89 @@ class HaoDengLight(HaoDengEntity, LightEntity):
     async def async_turn_off(self, **kwargs: Any) -> None:
         await self._send(commands.power(False))
         self._attr_is_on = False
+        self.async_write_ha_state()
+
+
+class HaoDengLight(_HaoDengLightBase):
+    """A single light in the mesh."""
+
+    _attr_name = None  # use the device name
+
+    def __init__(
+        self,
+        mesh: HaoDengMesh,
+        device: dict[str, Any],
+        min_kelvin: int,
+        max_kelvin: int,
+        invert_cct: bool,
+    ) -> None:
+        super().__init__(mesh, device[DEV_MESH_ID], min_kelvin, max_kelvin, invert_cct)
+        mac = normalize_mac(device[DEV_MAC])
+        self._attr_unique_id = mac.replace(":", "").lower()
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, self._attr_unique_id)},
+            connections={(CONNECTION_BLUETOOTH, mac)},
+            name=device[DEV_NAME],
+            manufacturer=device.get(DEV_MANUFACTURER) or "Zengge",
+            model=(device.get(DEV_MODEL) or "").replace("_", " ") or None,
+            sw_version=device.get(DEV_FIRMWARE),
+        )
+        self._last_status: LightStatus | None = None
+
+    @property
+    def available(self) -> bool:
+        return self._mesh.is_available(self._dest)
+
+    @callback
+    def _handle_mesh_update(self) -> None:
+        status = self._mesh.status.get(self._dest)
+        if status is not None and status != self._last_status:
+            self._last_status = status
+            self._apply_status(status)
+        self.async_write_ha_state()
+
+
+class HaoDengGroupLight(_HaoDengLightBase):
+    """A group as defined in the Hao Deng app. One command switches all members at once."""
+
+    _attr_name = None  # use the group (device) name
+
+    def __init__(
+        self,
+        mesh: HaoDengMesh,
+        entry_id: str,
+        place_id: str,
+        group: dict[str, Any],
+        members: list[int],
+        min_kelvin: int,
+        max_kelvin: int,
+        invert_cct: bool,
+    ) -> None:
+        super().__init__(mesh, group[GROUP_ID], min_kelvin, max_kelvin, invert_cct)
+        self._members = members
+        self._attr_unique_id = f"{place_id}_group_{group[GROUP_ID]}"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, self._attr_unique_id)},
+            name=group[GROUP_NAME],
+            manufacturer="Zengge",
+            model="Mesh group",
+        )
+        self._attr_extra_state_attributes = {"mesh_group_id": group[GROUP_ID]}
+        self._last_statuses: tuple[LightStatus | None, ...] = ()
+
+    @property
+    def available(self) -> bool:
+        return any(self._mesh.is_available(member) for member in self._members)
+
+    @callback
+    def _handle_mesh_update(self) -> None:
+        statuses = tuple(self._mesh.status.get(member) for member in self._members)
+        if statuses != self._last_statuses:
+            self._last_statuses = statuses
+            known = [s for s in statuses if s is not None and s.online]
+            if known:
+                lit = [s for s in known if s.is_on]
+                # Representative member: the brightest one that is on, else the first known
+                self._apply_status(max(lit, key=lambda s: s.brightness) if lit else known[0])
+                self._attr_is_on = bool(lit)
         self.async_write_ha_state()

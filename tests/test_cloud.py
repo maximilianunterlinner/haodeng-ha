@@ -81,3 +81,45 @@ def test_checkcode_matches_upstream() -> None:
     data = padder.update(("ZG" + ts).encode()) + padder.finalize()
     enc = Cipher(algorithms.AES(b"0FC154F9C01DFA9656524A0EFABC994F"), modes.ECB()).encryptor()
     assert _checkcode(ts) == (enc.update(data) + enc.finalize()).hex()
+
+
+async def test_groups(aioclient_mock: AiohttpClientMocker, hass) -> None:
+    aioclient_mock.get(
+        f"{BASE}/MeshData/GetMyMeshGroupInfoItems/ZG",
+        json={
+            "ok": True,
+            "result": [
+                {"uniID": "u1", "groupID": 32771, "groupName": "Küche", "placeUniID": "p1", "userID": "x"},
+                {"uniID": "u2", "groupID": "32772", "groupName": None},
+                {"uniID": "u3", "groupID": 0, "groupName": "kaputt"},
+            ],
+        },
+    )
+    from homeassistant.helpers.aiohttp_client import async_get_clientsession
+
+    groups = await HaoDengCloud(async_get_clientsession(hass)).groups("p1")
+    assert [(g.group_id, g.name) for g in groups] == [(32771, "Küche"), (32772, "Group 32772")]
+    assert str(aioclient_mock.mock_calls[0][1]).endswith("placeUniID=p1&userId=")
+
+
+async def test_device_groups_parsed(aioclient_mock: AiohttpClientMocker, hass) -> None:
+    aioclient_mock.get(
+        f"{BASE}/MeshData/GetMyMeshDeviceItems/ZG",
+        json={
+            "ok": True,
+            "result": [
+                {
+                    "meshAddress": 3,
+                    "macAddress": "F8:1D:78:00:00:03",
+                    "group1ID": 32771,
+                    "group2ID": 0,
+                    "group3ID": 32774,
+                    "wiringType": 1,
+                },
+            ],
+        },
+    )
+    from homeassistant.helpers.aiohttp_client import async_get_clientsession
+
+    (device,) = await HaoDengCloud(async_get_clientsession(hass)).devices("p1")
+    assert device.groups == [32771, 32774]

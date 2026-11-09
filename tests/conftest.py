@@ -10,6 +10,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.haodeng_mesh.const import (
     CONF_DEVICES,
+    CONF_GROUPS,
     CONF_MESH_LTK,
     CONF_MESH_NAME,
     CONF_MESH_PASSWORD,
@@ -34,6 +35,8 @@ ENTRY_DATA = {
             "model": "RGBCW_Spot",
             "manufacturer": "Zengge",
             "firmware": "1.0",
+            "device_type": 65,
+            "groups": [32771],
         },
         {
             "mesh_id": 4,
@@ -42,7 +45,14 @@ ENTRY_DATA = {
             "model": None,
             "manufacturer": None,
             "firmware": None,
+            "device_type": 65,
+            "groups": [32771, 32772],
         },
+    ],
+    CONF_GROUPS: [
+        {"group_id": 32771, "name": "Alle Spots"},
+        {"group_id": 32772, "name": "Nur Küche"},
+        {"group_id": 32773, "name": "Leere Gruppe"},
     ],
 }
 

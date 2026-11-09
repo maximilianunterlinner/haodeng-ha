@@ -40,6 +40,10 @@ Ordner `custom_components/haodeng_mesh` nach `/config/custom_components/haodeng_
 
 **Neue Lampen in der App hinzugefügt?** Eintrag → ⋮ → *Neu konfigurieren* → erneut einloggen. Lampenliste und Zugangsdaten werden aktualisiert, Entitäten bleiben erhalten.
 
+### Gruppen
+Gruppen aus der Hao-Deng-App werden als eigene Licht-Entitäten angelegt. Ein Befehl an die Gruppe geht als **ein** Mesh-Befehl an die Gruppenadresse – alle Lampen schalten exakt gleichzeitig (wie mit der Fernbedienung).
+Gruppen in der App geändert? → *Neu konfigurieren*.
+
 ### Optionen
 * **Wärmstes / kältestes Weiß (K):** Farbtemperaturbereich der Lampen (Standard 2700–6500 K).
 * **Farbtemperatur umkehren:** Falls „warm“ und „kalt“ vertauscht sind.
@@ -49,6 +53,7 @@ Ordner `custom_components/haodeng_mesh` nach `/config/custom_components/haodeng_
 | Entität | Beschreibung |
 |---|---|
 | `light.*` | Je Lampe: Ein/Aus, Helligkeit, Farbe (RGB), Farbtemperatur |
+| `light.<gruppenname>` | Je Gruppe aus der App: ein Mesh-Befehl schaltet alle Mitglieder gleichzeitig. Zustand = eingeschaltet, sobald ein Mitglied an ist |
 | `binary_sensor.*_mesh_verbindung` | Diagnose: Verbindung zum Mesh besteht |
 | `sensor.*_verbunden_uber` | Diagnose: über welche Lampe verbunden; Attribute `last_error`, `wifi_bridge_online` |
 | `button.*_neu_verbinden` | Diagnose: Verbindung neu aufbauen |

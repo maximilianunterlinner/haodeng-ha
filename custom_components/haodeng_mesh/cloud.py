@@ -34,6 +34,7 @@ _BASE_PATH = "/MeshClouds/apixp"
 _LOGIN = "/User001/LoginForUser/ZG"
 _PLACES = "/MeshData/GetMyMeshPlaceItems/ZG"
 _DEVICES = "/MeshData/GetMyMeshDeviceItems/ZG"
+_GROUPS = "/MeshData/GetMyMeshGroupInfoItems/ZG"
 
 # Static key the app uses to sign the timestamp of the login request
 _CHECKCODE_KEY = b"0FC154F9C01DFA9656524A0EFABC994F"
@@ -77,6 +78,14 @@ class CloudDevice:
     firmware: str | None
     device_type: int | None
     groups: list[int] = field(default_factory=list)
+
+
+@dataclass
+class CloudGroup:
+    """A group as defined in the app. group_id is the mesh destination address."""
+
+    group_id: int
+    name: str
 
 
 def _checkcode(timestamp: str) -> str:
@@ -193,3 +202,19 @@ class HaoDengCloud:
                 )
             )
         return devices
+
+    async def groups(self, place_id: str) -> list[CloudGroup]:
+        result = await self._request(
+            "GET", _GROUPS, params={"placeUniID": place_id, "userId": self._user_id or ""}
+        )
+        groups: list[CloudGroup] = []
+        for item in result or []:
+            try:
+                group_id = int(item.get("groupID") or 0)
+            except (TypeError, ValueError):
+                group_id = 0
+            if not 0 < group_id <= 0xFFFF:
+                _LOGGER.debug("Skipping group with invalid id: %s", item)
+                continue
+            groups.append(CloudGroup(group_id=group_id, name=item.get("groupName") or f"Group {group_id}"))
+        return groups

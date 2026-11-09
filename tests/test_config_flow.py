@@ -11,7 +11,13 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 import pytest
 
-from custom_components.haodeng_mesh.cloud import CloudAuthError, CloudDevice, CloudError, CloudPlace
+from custom_components.haodeng_mesh.cloud import (
+    CloudAuthError,
+    CloudDevice,
+    CloudError,
+    CloudGroup,
+    CloudPlace,
+)
 from custom_components.haodeng_mesh.const import (
     CONF_DEVICES,
     CONF_MESH_NAME,
@@ -25,7 +31,7 @@ from custom_components.haodeng_mesh.const import (
 LOGIN = {CONF_USERNAME: "me@example.com", CONF_PASSWORD: "pw", CONF_REGION: "eu"}
 PLACE_1 = CloudPlace("place-1", "Zuhause", "meshname", "meshpass", "ltk")
 PLACE_2 = CloudPlace("place-2", "Garten", "mesh2", "pass2", "ltk2")
-DEVICES = [CloudDevice(3, "a4c138000003", "Spot", "RGBCW_Spot", "Zengge", "1.0", 65)]
+DEVICES = [CloudDevice(3, "a4c138000003", "Spot", "RGBCW_Spot", "Zengge", "1.0", 65, [32771])]
 
 
 @pytest.fixture
@@ -34,6 +40,7 @@ def cloud() -> Generator[AsyncMock]:
         inst = cls.return_value
         inst.places.return_value = [PLACE_1]
         inst.devices.return_value = DEVICES
+        inst.groups.return_value = [CloudGroup(32771, "Küche")]
         yield inst
 
 
@@ -54,6 +61,16 @@ async def test_single_place(hass: HomeAssistant, cloud: AsyncMock) -> None:
     assert data[CONF_DEVICES][0]["mac"] == "A4:C1:38:00:00:03"
     assert CONF_PASSWORD not in data and CONF_USERNAME not in data  # cloud login not stored
     assert result["result"].unique_id == "place-1"
+    assert data["groups"] == [{"group_id": 32771, "name": "Küche"}]
+    assert data[CONF_DEVICES][0]["groups"] == [32771]
+
+
+async def test_groups_optional(hass: HomeAssistant, cloud: AsyncMock) -> None:
+    cloud.groups.side_effect = CloudError("not supported")
+    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": config_entries.SOURCE_USER})
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], LOGIN)
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["data"]["groups"] == []
 
 
 async def test_multiple_places(hass: HomeAssistant, cloud: AsyncMock) -> None:

@@ -24,7 +24,14 @@ async def test_setup_without_lights_in_range(hass: HomeAssistant, mock_entry, mo
     assert hass.states.get("binary_sensor.hao_deng_mesh_zuhause_mesh_connection").state == STATE_OFF
 
     devices = dr.async_entries_for_config_entry(dr.async_get(hass), mock_entry.entry_id)
-    assert {d.name for d in devices} == {"Hao Deng Mesh Zuhause", "Wohnzimmer Spot", "Küche"}
+    assert {d.name for d in devices} == {
+        "Hao Deng Mesh Zuhause",
+        "Wohnzimmer Spot",
+        "Küche",
+        "Alle Spots",
+        "Nur Küche",
+    }
+    assert all(d.via_device_id for d in devices if d.name != "Hao Deng Mesh Zuhause")
     spot = next(d for d in devices if d.name == "Wohnzimmer Spot")
     assert spot.via_device_id is not None
     assert spot.model == "RGBCW Spot"

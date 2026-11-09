@@ -38,11 +38,13 @@ from .cloud import (
     CloudAuthError,
     CloudDevice,
     CloudError,
+    CloudGroup,
     CloudPlace,
     HaoDengCloud,
 )
 from .const import (
     CONF_DEVICES,
+    CONF_GROUPS,
     CONF_MESH_LTK,
     CONF_MESH_NAME,
     CONF_MESH_PASSWORD,
@@ -61,6 +63,8 @@ from .const import (
     DEV_NAME,
     DEV_TYPE,
     DOMAIN,
+    GROUP_ID,
+    GROUP_NAME,
     OPT_INVERT_CCT,
     OPT_MAX_KELVIN,
     OPT_MIN_KELVIN,
@@ -183,6 +187,12 @@ class HaoDengMeshConfigFlow(ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="cannot_connect")
         if not devices:
             return self.async_abort(reason="no_devices_found")
+        try:
+            groups: list[CloudGroup] = await self._cloud.groups(place.place_id)
+        except CloudError as err:
+            # Groups are optional; single lights work without them
+            _LOGGER.warning("Could not load groups, continuing without: %s", err)
+            groups = []
 
         data = {
             CONF_PLACE_ID: place.place_id,
@@ -192,6 +202,7 @@ class HaoDengMeshConfigFlow(ConfigFlow, domain=DOMAIN):
             CONF_MESH_PASSWORD: place.mesh_password,
             CONF_MESH_LTK: place.mesh_ltk,
             CONF_DEVICES: [_device_entry(device) for device in devices],
+            CONF_GROUPS: [{GROUP_ID: g.group_id, GROUP_NAME: g.name} for g in groups],
         }
 
         if self.source == SOURCE_RECONFIGURE:

@@ -124,3 +124,39 @@ async def test_brightness_only(hass: HomeAssistant, setup, mock_mesh_io) -> None
 async def test_unload(hass: HomeAssistant, setup, mock_mesh_io) -> None:
     assert await hass.config_entries.async_unload(setup.entry_id)
     mock_mesh_io["stop"].assert_awaited_once()
+
+
+GROUP = "light.alle_spots"
+
+
+async def test_groups_created(hass: HomeAssistant, setup) -> None:
+    assert hass.states.get(GROUP) is not None
+    assert hass.states.get("light.nur_kuche") is not None
+    assert hass.states.get("light.leere_gruppe") is None  # no members -> no entity
+    assert hass.states.get(GROUP).state == STATE_UNAVAILABLE
+
+
+async def test_group_state_from_members(hass: HomeAssistant, setup) -> None:
+    _push(setup, LightStatus(3, True, 0, 0x41, 0))
+    _push(setup, LightStatus(4, True, 0, 0x41, 0))
+    await hass.async_block_till_done()
+    assert hass.states.get(GROUP).state == STATE_OFF
+
+    _push(setup, LightStatus(4, True, 40, 63, 85))
+    await hass.async_block_till_done()
+    state = hass.states.get(GROUP)
+    assert state.state == STATE_ON  # any member on -> group on
+    assert state.attributes[ATTR_COLOR_MODE] == ColorMode.RGB
+    assert state.attributes[ATTR_RGB_COLOR] == (0, 255, 0)
+    assert state.attributes["mesh_group_id"] == 32771
+
+
+async def test_group_command_goes_to_group_address(hass: HomeAssistant, setup, mock_mesh_io) -> None:
+    _push(setup, LightStatus(3, True, 0, 0x41, 0))
+    await hass.async_block_till_done()
+    await hass.services.async_call(
+        LIGHT_DOMAIN, "turn_on", {ATTR_ENTITY_ID: GROUP, ATTR_COLOR_TEMP_KELVIN: 2700}, blocking=True
+    )
+    mock_mesh_io["send"].assert_awaited_once_with(32771, commands.color_temperature(0, 100))
+    await hass.services.async_call(LIGHT_DOMAIN, "turn_off", {ATTR_ENTITY_ID: GROUP}, blocking=True)
+    mock_mesh_io["send"].assert_awaited_with(32771, commands.power(False))
